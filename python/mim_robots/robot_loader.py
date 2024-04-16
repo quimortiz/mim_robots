@@ -87,6 +87,7 @@ def load_pinocchio_wrapper(robot_name: str, locked_joints = None):
 
     try:
         RobotInfo = MiM_Robots[robot_name]
+        print(RobotInfo)
         try:
             if RobotInfo.fixed_base:
                 full_robot = pin.RobotWrapper.BuildFromURDF(

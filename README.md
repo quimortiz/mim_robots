@@ -2,6 +2,23 @@
 
 This repository contains robot descriptions that are used in the Machines in Motion lab. It also contains APIs that can use the robot descriptions directly to create Mujoco or PyBullet simulations. This code base also contains dynamic_graph_manager configuration YAML files to enable easy transfer to real hardware.
 
+## First example
+
+Option 1: 
+
+```
+PYTHONPATH="python" python3 examples/mujoco_demo.py
+```
+
+Option 2: 
+
+Install the package
+
+```
+TODO
+```
+
+
 ## Dependencies
 - [robot_description](https://github.com/robot-descriptions)
 - [pinocchio](https://github.com/stack-of-tasks/pinocchio) 
@@ -18,7 +35,6 @@ machines in motion labs. For other robots it utilizes robot_descriptions to down
 ### Robot Envs 
 These are specific case envs that are created based on previous project use cases. Feel free to add more envs so that they can be reused by others. 
 Each robot env should only contain information regarding the robots to be loaded, and other objects that might be interacted with by the robot. 
-
 
 ## Possible Errors :
 1. When trying to load a new robot if you see this error - ``` git.exc.InvalidGitRepositoryError ``` then run ``` rm -rf ~/.cache/robot_descriptions/jaxon_description``` and try again. This is an error that comes from robot_description. Link to issue - https://github.com/robot-descriptions/robot_descriptions.py

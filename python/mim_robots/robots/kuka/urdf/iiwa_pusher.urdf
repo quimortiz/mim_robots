@@ -328,6 +328,18 @@
     <!-- pybullet simulation parameters -->
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
+
+  <joint name="kuka_to_pusher" type="fixed">
+    <parent link="L7"/>
+    <child link="pusher"/>
+    <!-- Joint placement -->
+    <origin rpy="0 0 0" xyz="0 0 0.045"/>
+    <!-- Limits (usefull?) -->
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
+    <!-- pybullet simulation parameters -->
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+
   <!-- kuka_to_sensor_mount -->
   <link name="kuka_to_sensor_mount">
     <inertial>
@@ -344,15 +356,6 @@
         <color rgba="0.8 0.8 0.8 1.0"/>
       </material>
     </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 .05"/>
-      <geometry>
-        <cylinder radius="0.02" length="0.1"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
 
 
     <collision>
@@ -364,19 +367,32 @@
         <color rgba="0.8 0.8 0.8 1.0"/>
       </material>
     </collision>
+  </link>
+
+
+  <link name="pusher">
+
+      <origin rpy="0 0 0" xyz="0 0 0"/>
 
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 .05"/>
       <geometry>
         <cylinder radius="0.02" length="0.1"/>
       </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
+      <material name="Red"/>
     </visual>
 
+    <collision>
+      <geometry>
+        <cylinder radius="0.02" length=".1"/>
+      </geometry>
+      <material name="Red"/>
+    </collision>
 
-  </link>
+
+</link>
+
+
+
   <!-- fixed joint sensor_mount <=> sensor -->
   <joint name="mount_to_sensor_joint" type="fixed">
     <parent link="kuka_to_sensor_mount"/>
@@ -514,7 +530,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.00873"/>
       <geometry>
-        <spher radius="0.00873"/>
+        <sphere radius="0.00873"/>
         <!-- <mesh filename="package://meshes/kuka/tennis_ball_smaller.obj" /> -->
       </geometry>
       <material name="Green">

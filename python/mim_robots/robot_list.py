@@ -62,6 +62,15 @@ MiM_Robots = {
                     resources_path + "kuka/xml/iiwa_ft_sensor_ball.xml", \
                     resources_path + "kuka/dgm_parameters_iiwa.yaml", \
                     True),
+    "iiwa_pusher" : RobotInfo(
+                    "iiwa_pusher", 
+                    7, \
+                    "Kuka IIWA LBR robot - 7 DoF with the pusher", \
+                    resources_path + "kuka/urdf/iiwa_pusher.urdf", \
+                    resources_path + "kuka", \
+                    resources_path + "kuka/xml/iiwa_pusher.xml", \
+                    None,
+                    True),
     "iiwa_gripper" : RobotInfo(
                     "iiwa_gripper", 
                     13, \
@@ -80,6 +89,10 @@ MiM_Robots = {
                     resources_path + "solo12/xml/solo12.xml", \
                     resources_path + "solo12/dgm_parameters_solo12_nyu.yaml", \
                     False),
+
+
+
+
 }
 
 
