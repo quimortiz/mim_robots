@@ -44,7 +44,7 @@
   <joint name="world_to_pusher_tip_goal" type="fixed">
     <parent link="world"/>
     <child link="pusher_tip_goal"/>
-      <origin rpy="0 0 0" xyz=".8 .4 .1"/>
+      <origin rpy="-3.14159 0 0" xyz=".6 .2 .2"/>
   </joint>
 
 
@@ -353,7 +353,7 @@
   <joint name="kuka_to_ee_push_tip_joint" type="fixed">
     <parent link="L7"/>
     <child link="pusher_tip"/>
-    <origin rpy="1.57079632679 0 0" xyz="0 0 0.145"/>
+    <origin rpy="0 0 0" xyz="0 0 0.145"/>
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
