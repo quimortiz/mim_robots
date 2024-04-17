@@ -66,9 +66,9 @@ MiM_Robots = {
                     "iiwa_pusher", 
                     7, \
                     "Kuka IIWA LBR robot - 7 DoF with the pusher", \
-                    resources_path + "kuka/urdf/iiwa_pusher.urdf", \
+                    resources_path + "kuka/urdf/iiwa_pusher_v2.urdf", \
                     resources_path + "kuka", \
-                    resources_path + "kuka/xml/iiwa_pusher.xml", \
+                    resources_path + "kuka/xml/iiwa_pusher_v2.xml", \
                     None,
                     True),
     "iiwa_gripper" : RobotInfo(

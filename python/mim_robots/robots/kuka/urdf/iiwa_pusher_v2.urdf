@@ -4,7 +4,6 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="KUKAiiwa14" xmlns:xacro="http://www.ros.org/wiki/xacro">
-  adfafa
   <mujoco>
     <compiler 
     meshdir="../meshes/kuka" 
@@ -19,7 +18,7 @@
     <color rgba="0.0 0.0 0.8 1.0"/>
   </material>
   <material name="Green">
-    <color rgba="0.0 0.8 0.0 1.0"/>
+    <color rgba="0.0 0.8 0.0 0.5"/>
   </material>
   <material name="Grey">
     <color rgba="0.4 0.4 0.4 1.0"/>
@@ -31,13 +30,37 @@
     <color rgba="0.8705882352941177 0.8117647058823529 0.7647058823529411 1.0"/>
   </material>
   <material name="Red">
-    <color rgba="0.8 0.0 0.0 .5"/>
+    <color rgba="0.8 0.0 0.0 1.0"/>
   </material>
   <material name="White">
     <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
   <!-- Fix to world just for testing -->
+
+
   <link name="world"/>
+
+
+  <joint name="world_to_pusher_tip_goal" type="fixed">
+    <parent link="world"/>
+    <child link="pusher_tip_goal"/>
+      <origin rpy="0 0 0" xyz=".8 .4 .1"/>
+  </joint>
+
+
+  <link name="pusher_tip_goal" >
+
+
+    <visual>
+      <geometry>
+        <sphere radius="0.02" />
+      </geometry>
+      <material name="Green"/>
+    </visual>
+    </link>
+
+
+
   <!--joint between WORLD and BASE-->
   <joint name="A0" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -299,8 +322,7 @@
   <link name="L7">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0.02"/>
-      <!-- <mass value="0.35432"/> -->
-      <mass value="0.519867"/>
+      <mass value="0.35432"/>
       <inertia ixx="0.00795" ixy="0.00022" ixz="-0.00029" iyy="0.01083" iyz="-0.00029" izz="0.00294"/>
     </inertial>
     <visual>
@@ -319,93 +341,31 @@
     </collision>
   </link>
   <!-- kuka_to_ee_joint -->
-  <joint name="kuka_to_ee_joint" type="fixed">
+
+  <joint name="kuka_to_ee_push_stick_joint" type="fixed">
     <parent link="L7"/>
-    <child link="kuka_to_sensor_mount"/>
-    <!-- Joint placement -->
-    <origin rpy="1.57079632679 0 0" xyz="0 0 0.045"/>
-    <!-- Limits (usefull?) -->
+    <child link="pusher_stick"/>
+    <origin rpy="0 0 0" xyz="0 0 0.095"/>
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
-    <!-- pybullet simulation parameters -->
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
 
-  <joint name="kuka_to_pusher" type="fixed">
-    <parent link="L7"/>
-    <child link="pusher_stick"/>
-    <origin rpy="0 0 0" xyz="0 0 0.1"/>
-  </joint>
-
-  <joint name="kuka_to_pusher_tip" type="fixed">
+  <joint name="kuka_to_ee_push_tip_joint" type="fixed">
     <parent link="L7"/>
     <child link="pusher_tip"/>
-      <origin rpy="0 0 0" xyz="0 0 0.2"/>
+    <origin rpy="1.57079632679 0 0" xyz="0 0 0.145"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
 
 
-
-
-  <joint name="world_to_pusher_tip_goal" type="fixed">
-    <parent link="world"/>
-    <child link="pusher_tip_goal"/>
-      <origin rpy="0 0 0" xyz=".8 .4 .1"/>
-  </joint>
-
-  <link name="pusher_tip_goal" >
-    <visual>
-      <geometry>
-        <sphere radius="0.01" />
-      </geometry>
-      <material name="Green"/>
-    </visual>
-    </link>
-
-
-
-
-
-  <!-- kuka_to_sensor_mount -->
-  <link name="kuka_to_sensor_mount">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0"/>
-      <!-- <mass value="0.042647"/> -->
-      <!-- <mass value="0.0"/> -->
-      <inertia ixx="0.0000014879" ixy="0.0" ixz="0.0" iyy="0.0001171" iyz="0.0" izz="0.0001171"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://meshes/kuka/kuka_to_sensor_mount.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
-
-
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://meshes/kuka/kuka_to_sensor_mount.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </collision>
-  </link>
 
 
   <link name="pusher_stick">
-
-
-
     <inertial>
       <mass value="0.0"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
-
-
     <visual>
       <geometry>
         <cylinder radius="0.02" length="0.1"/>
@@ -420,40 +380,14 @@
       </geometry>
       <material name="Green"/>
     </collision>
-
-
-</link>
+    </link>
 
   <link name="pusher_tip">
-
 
     <inertial>
       <mass value="0.1"/>
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
-
-
-    <visual>
-      <geometry>
-        <sphere radius="0.01" />
-      </geometry>
-      <material name="Red"/>
-    </visual>
-
-    <collision>
-      <geometry>
-        <sphere radius="0.01"/>
-      </geometry>
-      <material name="Red"/>
-    </collision>
-
-
-
-    </link>
-
-  <link name="pusher_tip_goal">
-
-
     <visual>
       <geometry>
         <sphere radius="0.01" />
@@ -477,171 +411,203 @@
 
 
 
+  <!-- <joint name="kuka_to_ee_joint" type="fixed"> -->
+  <!--   <parent link="L7"/> -->
+  <!--   <child link="kuka_to_sensor_mount"/> -->
+  <!--   <!-- Joint placement --> -->
+  <!--   <origin rpy="1.57079632679 0 0" xyz="0 0 0.045"/> -->
+  <!--   <!-- Limits (usefull?) --> -->
+  <!--   <limit effort="1000" lower="-10" upper="10" velocity="1000"/> -->
+  <!--   <!-- pybullet simulation parameters --> -->
+  <!--   <dynamics damping="0.0" friction="0.0"/> -->
+  <!-- </joint> -->
+  <!-- <!-- kuka_to_sensor_mount --> -->
+  <!-- <link name="kuka_to_sensor_mount"> -->
+  <!--   <inertial> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <mass value="0.042647"/> -->
+  <!--     <inertia ixx="0.0000014879" ixy="0.0" ixz="0.0" iyy="0.0001171" iyz="0.0" izz="0.0001171"/> -->
+  <!--   </inertial> -->
+  <!--   <visual> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <mesh filename="package://meshes/kuka/kuka_to_sensor_mount.stl" scale="0.001 0.001 0.001"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </visual> -->
+  <!--   <collision> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <mesh filename="package://meshes/kuka/kuka_to_sensor_mount.stl" scale="0.001 0.001 0.001"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </collision> -->
+  <!-- </link> -->
+  <!-- <!-- fixed joint sensor_mount <=> sensor --> -->
+  <!-- <joint name="mount_to_sensor_joint" type="fixed"> -->
+  <!--   <parent link="kuka_to_sensor_mount"/> -->
+  <!--   <child link="ft_sensor_link"/> -->
+  <!--   <!-- Joint placement --> -->
+  <!--   <origin rpy="-1.57079632679 0 0" xyz="0 0.01795 0"/> -->
+  <!--   <!-- Limits (usefull?) --> -->
+  <!--   <limit effort="1000" lower="-10" upper="10" velocity="1000"/> -->
+  <!--   <!-- pybullet simulation parameters --> -->
+  <!--   <dynamics damping="0.0" friction="0.0"/> -->
+  <!-- </joint> -->
+  <!-- <!-- ft_sensor_link (Schunk) --> -->
+  <!-- <link name="ft_sensor_link"> -->
+  <!--   <inertial> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0.00785"/> -->
+  <!--     <mass value="0.091"/> -->
+  <!--     <inertia ixx="0.0000133864" ixy="0" ixz="0" iyy="0.0000133864" iyz="0" izz="0.000023034375"/> -->
+  <!--   </inertial> -->
+  <!--   <visual> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <cylinder length="0.0157" radius="0.0225"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </visual> -->
+  <!--   <collision> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <cylinder length="0.0157" radius="0.0225"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </collision> -->
+  <!-- </link> -->
+  <!-- <!-- fixed joint ft_sensor_link <=> case_mount --> -->
+  <!-- <joint name="sensor_to_case_joint" type="fixed"> -->
+  <!--   <parent link="ft_sensor_link"/> -->
+  <!--   <child link="sensor_to_case_mount"/> -->
+  <!--   <!-- Joint placement --> -->
+  <!--   <origin rpy="1.57079632679 0 0" xyz="0 0 0.00785"/> -->
+  <!--   <!-- Limits (usefull?) --> -->
+  <!--   <limit effort="1000" lower="-10" upper="10" velocity="1000"/> -->
+  <!--   <!-- pybullet simulation parameters --> -->
+  <!--   <dynamics damping="0.0" friction="0.0"/> -->
+  <!-- </joint> -->
+  <!-- <!-- sensor_to_case_mount --> -->
+  <!-- <link name="sensor_to_case_mount"> -->
+  <!--   <inertial> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0.000916 0"/> -->
+  <!--     <mass value="0.00895"/> -->
+  <!--     <inertia ixx="0.0001168" ixy="0.0" ixz="0.0" iyy="0.0002270" iyz="0.0000000017" izz="0.0001171"/> -->
+  <!--   </inertial> -->
+  <!--   <visual> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <mesh filename="package://meshes/kuka/sensor_to_case_mount.stl" scale="0.001 0.001 0.001"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </visual> -->
+  <!--   <collision> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <mesh filename="package://meshes/kuka/sensor_to_case_mount.stl" scale="0.001 0.001 0.001"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </collision> -->
+  <!-- </link> -->
+  <!-- <!-- fixed joint sensor_to_case_mount <=> ball_transfer --> -->
+  <!-- <joint name="case_mount_to_ball_transfer" type="fixed"> -->
+  <!--   <parent link="sensor_to_case_mount"/> -->
+  <!--   <child link="ball_transfer"/> -->
+  <!--   <!-- Joint placement --> -->
+  <!--   <origin rpy="0 1.57079632679 0" xyz="0 0.0025 0.0"/> -->
+  <!--   <!-- Limits (usefull?) --> -->
+  <!--   <limit effort="1000" lower="-10" upper="10" velocity="1000"/> -->
+  <!--   <!-- pybullet simulation parameters --> -->
+  <!--   <dynamics damping="0.0" friction="0.0"/> -->
+  <!-- </joint> -->
+  <!-- <!-- flang mount ball transfer--> -->
+  <!-- <link name="ball_transfer"> -->
+  <!--   <inertial> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0.000916 0"/> -->
+  <!--     <mass value="0.00895"/> -->
+  <!--     <inertia ixx="0.0001168" ixy="0.0" ixz="0.0" iyy="0.0002270" iyz="0.0000000017" izz="0.0001171"/> -->
+  <!--   </inertial> -->
+  <!--   <visual> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <mesh filename="package://meshes/kuka/5674K57_flange_mount_ball_transfer.stl" scale="0.0254 0.0254 0.0254"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </visual> -->
+  <!--   <collision> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 0"/> -->
+  <!--     <geometry> -->
+  <!--       <mesh filename="package://meshes/kuka/5674K57_flange_mount_ball_transfer.stl" scale="0.0254 0.0254 0.0254"/> -->
+  <!--     </geometry> -->
+  <!--     <material name="grey"> -->
+  <!--       <color rgba="0.8 0.8 0.8 1.0"/> -->
+  <!--     </material> -->
+  <!--   </collision> -->
+  <!--   <!-- Bullet specific paramters --> -->
+  <!--   <contact> -->
+  <!--     <lateral_friction value="0.0"/> -->
+  <!--     <restitution value="0.5"/> -->
+  <!--   </contact> -->
+  <!-- </link> -->
+  <!-- <!-- fixed joint assembled_ee <=> soft ball tip --> -->
+  <!-- <joint name="EE" type="fixed"> -->
+  <!--   <parent link="ball_transfer"/> -->
+  <!--   <child link="contact"/> -->
+  <!--   <!-- Joint placement --> -->
+  <!--   <origin rpy="0 -1.57079632679 -1.57079632679" xyz="0 0.027 0"/> -->
+  <!--   <!-- Limits (usefull?) --> -->
+  <!--   <limit effort="1000" lower="-10" upper="10" velocity="1000"/> -->
+  <!--   <!-- pybullet simulation parameters --> -->
+  <!--   <dynamics damping="0.0" friction="0.0"/> -->
+  <!-- </joint> -->
+  <!-- <!-- CONTACT (modeled by a soft polystyrene ball) --> -->
+  <!-- <link name="contact"> -->
+  <!--   <inertial> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 -0.00873"/> -->
+  <!--     <mass value="0.014"/> -->
+  <!--     <inertia ixx="0.00000126" ixy="0.0" ixz="0.0" iyy="0.00000126" iyz="0.0" izz="0.00000126"/> -->
+  <!--   </inertial> -->
+  <!--   <visual> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 -0.00873"/> -->
+  <!--     <geometry> -->
+  <!--       <sphere radius="0.00873"/> -->
+  <!--       <!-- <mesh filename="package://meshes/kuka/tennis_ball_smaller.obj" /> --> -->
+  <!--     </geometry> -->
+  <!--     <material name="Green"> -->
+  <!--       <color rgba="0. 0.8 0. 0.8"/> -->
+  <!--     </material> -->
+  <!--   </visual> -->
+  <!--   <collision> -->
+  <!--     <origin rpy="0 0 0" xyz="0 0 -0.00873"/> -->
+  <!--     <geometry> -->
+  <!--       <sphere radius="0.00873"/> -->
+  <!--       <!-- <mesh filename="package://meshes/kuka/tennis_ball_smaller.obj" /> --> -->
+  <!--     </geometry> -->
+  <!--     <material name="Green"> -->
+  <!--       <color rgba="0. 0.8 0. 0.8"/> -->
+  <!--     </material> -->
+  <!--   </collision> -->
+  <!--   <!-- Bullet specific paramters --> -->
+  <!--   <contact> -->
+  <!--     <lateral_friction value="0."/> -->
+  <!--     <restitution value="0.5"/> -->
+  <!--   </contact> -->
+  <!-- </link> -->
 
-
-
-
-  <!-- fixed joint sensor_mount <=> sensor -->
-  <joint name="mount_to_sensor_joint" type="fixed">
-    <parent link="kuka_to_sensor_mount"/>
-    <child link="ft_sensor_link"/>
-    <!-- Joint placement -->
-    <origin rpy="-1.57079632679 0 0" xyz="0 0.01795 0"/>
-    <!-- Limits (usefull?) -->
-    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
-    <!-- pybullet simulation parameters -->
-    <dynamics damping="0.0" friction="0.0"/>
-  </joint>
-  <!-- ft_sensor_link (Schunk) -->
-  <link name="ft_sensor_link">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0.00785"/>
-      <mass value="0.0"/>
-      <inertia ixx="0.0000133864" ixy="0" ixz="0" iyy="0.0000133864" iyz="0" izz="0.000023034375"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <cylinder length="0.0157" radius="0.0225"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <cylinder length="0.0157" radius="0.0225"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </collision>
-  </link>
-  <!-- fixed joint ft_sensor_link <=> case_mount -->
-  <joint name="sensor_to_case_joint" type="fixed">
-    <parent link="ft_sensor_link"/>
-    <child link="sensor_to_case_mount"/>
-    <!-- Joint placement -->
-    <origin rpy="1.57079632679 0 0" xyz="0 0 0.00785"/>
-    <!-- Limits (usefull?) -->
-    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
-    <!-- pybullet simulation parameters -->
-    <dynamics damping="0.0" friction="0.0"/>
-  </joint>
-  <!-- sensor_to_case_mount -->
-  <link name="sensor_to_case_mount">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0.000916 0"/>
-      <mass value="0.00"/>
-      <inertia ixx="0.0001168" ixy="0.0" ixz="0.0" iyy="0.0002270" iyz="0.0000000017" izz="0.0001171"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://meshes/kuka/sensor_to_case_mount.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://meshes/kuka/sensor_to_case_mount.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </collision>
-  </link>
-  <!-- fixed joint sensor_to_case_mount <=> ball_transfer -->
-  <joint name="case_mount_to_ball_transfer" type="fixed">
-    <parent link="sensor_to_case_mount"/>
-    <child link="ball_transfer"/>
-    <!-- Joint placement -->
-    <origin rpy="0 1.57079632679 0" xyz="0 0.0025 0.0"/>
-    <!-- Limits (usefull?) -->
-    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
-    <!-- pybullet simulation parameters -->
-    <dynamics damping="0.0" friction="0.0"/>
-  </joint>
-  <!-- flang mount ball transfer-->
-  <link name="ball_transfer">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0.000916 0"/>
-      <mass value="0.00"/>
-      <inertia ixx="0.0001168" ixy="0.0" ixz="0.0" iyy="0.0002270" iyz="0.0000000017" izz="0.0001171"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://meshes/kuka/5674K57_flange_mount_ball_transfer.stl" scale="0.0254 0.0254 0.0254"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="package://meshes/kuka/5674K57_flange_mount_ball_transfer.stl" scale="0.0254 0.0254 0.0254"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </collision>
-    <!-- Bullet specific paramters -->
-    <contact>
-      <lateral_friction value="0.0"/>
-      <restitution value="0.5"/>
-    </contact>
-  </link>
-  <!-- fixed joint assembled_ee <=> soft ball tip -->
-  <joint name="EE" type="fixed">
-    <parent link="ball_transfer"/>
-    <child link="contact"/>
-    <!-- Joint placement -->
-    <origin rpy="0 -1.57079632679 -1.57079632679" xyz="0 0.027 0"/>
-    <!-- Limits (usefull?) -->
-    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
-    <!-- pybullet simulation parameters -->
-    <dynamics damping="0.0" friction="0.0"/>
-  </joint>
-  <!-- CONTACT (modeled by a soft polystyrene ball) -->
-  <link name="contact">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 -0.00873"/>
-      <!-- <mass value="0.014"/> -->
-      <mass value="0.0000"/>
-      <inertia ixx="0.00000126" ixy="0.0" ixz="0.0" iyy="0.00000126" iyz="0.0" izz="0.00000126"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 -0.00873"/>
-      <geometry>
-        <sphere radius="0.00873"/>
-        <!-- <mesh filename="package://meshes/kuka/tennis_ball_smaller.obj" /> -->
-      </geometry>
-      <material name="Green">
-        <color rgba="0. 0.8 0. 0.8"/>
-      </material>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 -0.00873"/>
-      <geometry>
-        <sphere radius="0.00873"/>
-        <!-- <mesh filename="package://meshes/kuka/tennis_ball_smaller.obj" /> -->
-      </geometry>
-      <material name="Green">
-        <color rgba="0. 0.8 0. 0.8"/>
-      </material>
-    </collision>
-    <!-- Bullet specific paramters -->
-    <contact>
-      <lateral_friction value="0."/>
-      <restitution value="0.5"/>
-    </contact>
-  </link>
   <!-- Enable the Joint Feedback -->
   <gazebo reference="KUKAiiwa14_joint_7">
     <provideFeedback>true</provideFeedback>
