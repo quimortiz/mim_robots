@@ -44,7 +44,7 @@
   <joint name="world_to_pusher_tip_goal" type="fixed">
     <parent link="world"/>
     <child link="pusher_tip_goal"/>
-      <origin rpy="-3.14159 0 0" xyz=".6 .2 .2"/>
+      <origin rpy="-3.14159 0 3.14159" xyz=".6 .2 .2"/>
   </joint>
 
 

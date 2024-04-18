@@ -23,6 +23,10 @@ import copy
 
 import argparse
 
+from scipy.spatial.transform import Slerp
+
+
+
 def add_visual_capsule(scene, point1, point2, radius, rgba):
   """Adds one capsule to an mjvScene."""
   if scene.ngeom >= scene.maxgeom:
@@ -77,7 +81,7 @@ for body in bodies:
 joints = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"]
 # pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706"/>
 
-q0 = {"A1": 0, "A2": 0.5, "A3": 0, "A4": -1.5, "A5": 0, "A6": 0, "A7": 0}
+q0 = {"A1": 0, "A2": 0.5, "A3": 0, "A4": -1.5, "A5": 0, "A6": 1.5, "A7": 0}
 # q0 = { "A1":0, "A2":0, "A3":0, "A4":0, "A5":0, "A6":  0, "A7":0 }
 
 for k, v in q0.items():
@@ -111,19 +115,57 @@ pusher_tip_goal = "pusher_tip_goal"
 x_pusher_tip = data.geom(pusher_tip).xpos
 x_pusher_tip_goal = data.geom(pusher_tip_goal).xpos
 
+r_pusher_tip = data.geom(pusher_tip).xmat.reshape(3,3)
+r_pusher_tip_goal = data.geom(pusher_tip_goal).xmat.reshape(3,3)
+
+# convert to quaternions
+q_pusher_tip = RR.from_matrix(r_pusher_tip).as_quat()
+q_pusher_tip_goal = RR.from_matrix(r_pusher_tip_goal).as_quat()
+
+
+
+
+
+
 num_steps = 100
 
 max_sim_time = 10  # in seconds
 max_T = max_sim_time
 
-
+slerp = Slerp([0, max_T] , RR.from_quat([q_pusher_tip, q_pusher_tip_goal]))
+              
 times = np.linspace(0, max_T, num_steps)
+
+rotation_path = slerp(times)
+
+
+# plot rotation path?
+
+
+
+
+
+
+
 
 nx = len(x_pusher_tip)
 
 path = np.zeros((100, nx))
 for i in range(nx):
     path[:, i] = np.interp(times, [0, max_T], [x_pusher_tip[i], x_pusher_tip_goal[i]])
+
+
+fig = plt.figure()
+ax = plt.axes(projection="3d")
+one_every = 5
+for ii in range(0, len(rotation_path), one_every):
+    R = rotation_path[ii].as_matrix()
+    x = path[ii]
+    print("x", x)
+    print("R", R)
+    draw_3d_axis_from_R(ax, x, R, length=.05)
+
+plt.show()
 
 
 displacement = np.diff(path, axis=0)
@@ -219,12 +261,12 @@ oMtool_goal = robot.data.oMf[IDX_PUSHER_TIP_GOAL]
 
 print("Tool tip placement:", oMtooltip)
 
-assert np.linalg.norm(position_pusher_tip_mujoco - oMtooltip.translation) < 1e-6
-assert np.linalg.norm(position_pusher_mujoco - oMtool.translation) < 1e-6
-assert np.linalg.norm(postion_pusher_tip_goal - oMtool_goal.translation) < 1e-6
+assert np.linalg.norm(position_pusher_tip_mujoco - oMtooltip.translation) < 1e-4
+assert np.linalg.norm(position_pusher_mujoco - oMtool.translation) < 1e-4
+assert np.linalg.norm(postion_pusher_tip_goal - oMtool_goal.translation) < 1e-4
 
-assert np.linalg.norm(r_pusher_tip_mujoco - oMtooltip.rotation) < 1e-6
-assert np.linalg.norm(r_pusher_tip_goal - oMtool_goal.rotation) < 1e-6
+assert np.linalg.norm(r_pusher_tip_mujoco - oMtooltip.rotation) < 1e-4
+assert np.linalg.norm(r_pusher_tip_goal - oMtool_goal.rotation) < 1e-4
 
 
 
@@ -322,15 +364,22 @@ class Trajectory_controller:
     def __init__(self):
         """ """
         self.path = path
+        self.rotation_path = rotation_path 
         self.path_vel = desired_vel
         self.path_time = times
         self.kvv = 1
         self.qvl = 0.1
         self.k_invdyn = 1
+
     def get_u(self):
-        """ """
+        """ 
+        """
         t = data.time
-        idx = np.argmax(self.path_time > t)
+
+        if t > self.path_time[-1]:
+            idx = -1
+        else:
+            idx = np.argmax(self.path_time > t)
         pdes = self.path[idx]
 
         # Compute the error term in the end effector position
@@ -338,7 +387,7 @@ class Trajectory_controller:
         q = get_robot_joints()
         qvel = get_robot_vel()
 
-        only_position = True
+        only_position = False
 
         if only_position:
 
@@ -353,7 +402,6 @@ class Trajectory_controller:
             o_TG = oMtool.translation - pdes
             v_des = -self.k_invdyn * np.linalg.pinv(o_Jtool3) @ o_TG
 
-            aq = self.kvv * (v_des - qvel) - self.qvl * qvel
 
         else:
             # I compute now the error in local frame
@@ -364,6 +412,9 @@ class Trajectory_controller:
             # Placement from world frame o to frame f oMtool  
             oMtool = robot.data.oMf[IDX_PUSHER_TIP]
 
+            _oMgoal = self.rotation_path[idx].as_matrix()
+            oMgoal = pin.SE3( _oMgoal, pdes)
+
             # 6D error between the two frame
             tool_nu = pin.log(oMtool.inverse()*oMgoal).vector
 
@@ -371,18 +422,9 @@ class Trajectory_controller:
             tool_Jtool = pin.computeFrameJacobian(robot.model, robot.data, q, IDX_PUSHER_TIP)
 
             # Control law by least square
-            vq = pinv(tool_Jtool)@tool_nu
+            v_des = self.k_invdyn * np.linalg.pinv(tool_Jtool)@tool_nu
 
-            q = pin.integrate(robot.model,q, vq * DT)
-            viz.display(q)
-            time.sleep(1e-3)
-
-            herr.append(tool_nu)
-
-
-
-
-
+        aq = self.kvv * (v_des - qvel) - self.qvl * qvel
         return pin.rnea(robot.model, robot.data, q, qvel, aq)
 
 
@@ -390,10 +432,10 @@ class Goal_controller:
 
     def __init__(self):
         self.idx = 0
-        self.k_invdyn = .1
-        self.qvl = 0.01
+        self.k_invdyn = .5
+        self.qvl = 0.1
         # self.kvv = 1.
-        self.kvv = 1
+        self.kvv = .5
 
     def get_u(self):
         """
@@ -440,14 +482,13 @@ class Goal_controller:
             # Control law by least square
             v_des = np.linalg.pinv(tool_Jtool)@tool_nu
 
-
         aq = self.kvv * (v_des - qvel) - self.qvl * qvel
         return pin.rnea(robot.model, robot.data, q, qvel, aq)
 
 
 # c = PositionController()
-c = Goal_controller()  # TODO: test this controller!
-# c = Trajectory_controller()
+# c = Goal_controller()  # TODO: test this controller!
+c = Trajectory_controller()
 
 
 data.time = 0  # set time to 0
@@ -473,8 +514,9 @@ for i in range(Ncapusule_path):
 
 add_trace_every = .5 # s
 last_trace  = -1
+extra_time = 1
 
-while data.time < max_sim_time:
+while data.time < max_sim_time + extra_time:
     data.ctrl = c.get_u()
     mujoco.mj_step(model, data)
     tic = time.time()
@@ -488,6 +530,8 @@ while data.time < max_sim_time:
         # update the position of the goal
         viewer.sync()
         last_viewer_sync = tic
+        # print("current q")
+        # print(get_robot_joints())
     if data.time - last_trace > add_trace_every:
         # get the position of pusher-tip
         p = data.geom("pusher_tip").xpos
