@@ -16,6 +16,7 @@ from scipy.spatial.transform import Rotation as RR
 import yaml
 import pickle
 from aruco_utils import *
+from pin_croco_utils import *
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 import sys
@@ -39,93 +40,8 @@ def q_dict_to_array(q):
     return np.array([v for _, v in q.items()])
 
 
-def solve_ik(robot, oMgoal: pin.SE3, idx_ee: int, q0: np.ndarray):
-    """ """
-    num_iterations = 10
-    alpha_0 = 1.0
-    rate_alpha = 0.5
-    min_alpha = 1e-4
-    decrease_coeff = 1e-4
-
-    q = np.copy(q0)
-    f = math.inf
-
-    for it in range(num_iterations):
-
-        # Evaluate error at current configuration
-        pin.framesForwardKinematics(robot.model, robot.data, q)
-        oMtool = robot.data.oMf[idx_ee]
-        tool_nu = pin.log(oMtool.inverse() * oMgoal).vector
-        error = tool_nu @ tool_nu
-
-        # Get jacobian and descent direction
-        tool_Jtool = pin.computeFrameJacobian(
-            robot.model, robot.data, q, IDX_PUSHER_TIP
-        )
-        vq = np.linalg.pinv(tool_Jtool) @ tool_nu
-
-        # Start line search
-        alpha = alpha_0
-        f = error
-
-        q_ls = pin.integrate(robot.model, q, vq * alpha)
-        pin.framesForwardKinematics(robot.model, robot.data, q_ls)
-        tool_nu_ls = pin.log(oMtool.inverse() * oMgoal).vector
-        f_ls = tool_nu_ls @ tool_nu_ls
-
-        while f_ls > f - decrease_coeff * alpha * vq @ vq:
-            alpha *= rate_alpha
-            if alpha < min_alpha:
-                break
-            q_ls = pin.integrate(robot.model, q, vq * alpha)
-            pin.framesForwardKinematics(robot.model, robot.data, q_ls)
-            tool_nu_ls = pin.log(oMtool.inverse() * oMgoal).vector
-            f_ls = tool_nu_ls @ tool_nu_ls
-        print("accepted alpha is", alpha)
-
-        q = q_ls
-        f = f_ls
-
-        if np.linalg.norm(vq) < 1e-4:
-            print(f"converged at it {it}")
-            break
-
-    return q, f
 
 
-def add_visual_capsule(scene, point1, point2, radius, rgba):
-    """Adds one capsule to an mjvScene."""
-    if scene.ngeom >= scene.maxgeom:
-        return
-    scene.ngeom += 1  # increment ngeom\n",
-    # initialise a new capsule, add it to the scene using mjv_makeConnector\n",
-    mujoco.mjv_initGeom(
-        scene.geoms[scene.ngeom - 1],
-        mujoco.mjtGeom.mjGEOM_CAPSULE,
-        np.zeros(3),
-        np.zeros(3),
-        np.zeros(9),
-        rgba.astype(np.float32),
-    )
-    mujoco.mjv_makeConnector(
-        scene.geoms[scene.ngeom - 1],
-        mujoco.mjtGeom.mjGEOM_CAPSULE,
-        radius,
-        point1[0],
-        point1[1],
-        point1[2],
-        point2[0],
-        point2[1],
-        point2[2],
-    ),
-
-
-def view_image(image):
-    cv2.imshow(f"tmp", image)
-    while True:
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-    cv2.destroyWindow("tmp")
 
 
 argp = argparse.ArgumentParser()
@@ -680,140 +596,6 @@ if solve_mpc:
                 display.displayFromSolver(solver)
                 time.sleep(1.0)
 
-    # # # # # # # # # # # # # # #
-    ###  SETUP CROCODDYL OCP  ###
-    # # # # # # # # # # # # # # #
-
-    # # State and actuation model
-    # state = crocoddyl.StateMultibody(model)
-    # actuation = crocoddyl.ActuationModelFull(state)
-    #
-    # # Create cost terms
-    # # Control regularization cost
-    # uResidual = crocoddyl.ResidualModelControlGrav(state)
-    # uRegCost = crocoddyl.CostModelResidual(state, uResidual)
-    # # State regularization cost
-    # xResidual = crocoddyl.ResidualModelState(state, x0)
-    # xRegCost = crocoddyl.CostModelResidual(state, xResidual)
-    # # endeff frame translation cost
-    # endeff_frame_id = model.getFrameId("pusher_tip")
-    #
-    # endeff_translation = np.array([p1[0], p1[1], desired_z] )
-    # frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
-    #     state, endeff_frame_id, endeff_translation
-    # )
-    # frameTranslationCost = crocoddyl.CostModelResidual(state, frameTranslationResidual)
-    #
-    # # Create contraint on end-effector
-    # frameTranslationResidual = crocoddyl.ResidualModelFrameTranslation(
-    #     state, endeff_frame_id, np.zeros(3)
-    # )
-    #
-    # ee_contraint = crocoddyl.ConstraintModelResidual(
-    #     state,
-    #     frameTranslationResidual,
-    #     np.array([-1.0, -1.0, -1.0]),
-    #     np.array([1., 0.4, 0.4]),
-    # )
-    #
-    # # Create the running models
-    # runningModels = []
-    # dt = 5e-2
-    # T = 40
-    # for t in range(T + 1):
-    #     runningCostModel = crocoddyl.CostModelSum(state)
-    #     # Add costs
-    #     runningCostModel.addCost("stateReg", xRegCost, 1e-1)
-    #     runningCostModel.addCost("ctrlRegGrav", uRegCost, 1e-4)
-    #     if t != T:
-    #         runningCostModel.addCost("translation", frameTranslationCost, 4)
-    #     else:
-    #         runningCostModel.addCost("translation", frameTranslationCost, 40)
-    #     # Define contraints
-    #     constraints = crocoddyl.ConstraintModelManager(state, nu)
-    #     if t != 0:
-    #         constraints.addConstraint("ee_bound", ee_contraint)
-    #     # Create Differential action model
-    #     running_DAM = crocoddyl.DifferentialActionModelFreeFwdDynamics(
-    #         state, actuation, runningCostModel, constraints
-    #     )
-    #     # Apply Euler integration
-    #     running_model = crocoddyl.IntegratedActionModelEuler(running_DAM, dt)
-    #     runningModels.append(running_model)
-    #
-    #
-    # # Create the shooting problem
-    # problem = crocoddyl.ShootingProblem(x0, runningModels[:-1], runningModels[-1])
-    #
-    #
-    # # # # # # # # # # # # # #
-    # ###     SOLVE OCP     ###
-    # # # # # # # # # # # # # #
-    #
-    # # Define warm start
-    # xs = [x0] * (T + 1)
-    # us = [np.zeros(nu)] * T
-    #
-    # # Define solver
-    # solver = mim_solvers.SolverCSQP(problem)
-    # solver.termination_tolerance = 1e-4
-    # solver.with_callbacks = True
-    #
-    # # Solve
-    # max_iter = 100
-    # solver.solve(xs, us, max_iter)
-    #
-    #
-    #
-    #
-    #
-    # x_traj = np.array(solver.xs)
-    # u_traj = np.array(solver.us)
-    # p_traj = np.zeros((len(solver.xs), 3))
-    #
-    # for i in range(T + 1):
-    #     robot.framesForwardKinematics(x_traj[i, :nq])
-    #     p_traj[i] = robot.data.oMf[endeff_frame_id].translation
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # time_lin = np.linspace(0, dt * (T + 1), T+1)
-    #
-    # fig, axs = plt.subplots(nq)
-    # for i in range(nq):
-    #     axs[i].plot(time_lin, x_traj[:, i])
-    # fig.suptitle("State trajectory")
-    #
-    #
-    # fig, axs = plt.subplots(nq)
-    # for i in range(nq):
-    #     axs[i].plot(time_lin[:-1], u_traj[:, i])
-    # fig.suptitle("Control trajectory")
-    #
-    #
-    # fig, axs = plt.subplots(3)
-    # for i in range(3):
-    #     axs[i].plot(time_lin, p_traj[:, i])
-    #     axs[i].plot(time_lin[-1], endeff_translation[i], "o")
-    # fig.suptitle("End effector trajectory")
-    # plt.show()
-    #
-    # # viewer
-    # WITHDISPLAY = True
-    # if WITHDISPLAY:
-    #     import time
-    #     display = crocoddyl.MeshcatDisplay(robot)
-    #     display.rate = -1
-    #     display.freq = 1
-    #     while True:
-    #         display.displayFromSolver(solver)
-    #         time.sleep(1.0)
-
-# solve the problem with croccodyl
-# path = np.array([p1, p2, p3, p4, p1])
-# path = np.array([ p2, p3])
-# path = np.array([p1, p4, p1] )
-
 path = np.array([p2, p3, p2])
 
 _full_path = []
@@ -877,7 +659,7 @@ dt = full_time[1] - full_time[0]
 qs_vel = np.diff(qs, axis=0) / dt
 
 # generate a full line using croccodyl
-mpc_generation = True
+mpc_generation = False
 
 if mpc_generation:
     robot = model_pin
@@ -892,6 +674,31 @@ if mpc_generation:
 
     state = crocoddyl.StateMultibody(robot_model)
     actuation = crocoddyl.ActuationModelFull(state)
+
+    # Joint Limits
+    # Adding the state limits penalization\n",
+    print("state bounds")
+    print(state.lb)
+    print(state.ub)
+    import pdb
+
+    # pdb.set_trace()
+
+    # continue here!!
+
+    # x_lb = np.concatenate([state.l+ 1], state.lb[-state.nv :]])
+    # x_ub = np.concatenate([state.ub[0 : state.nv + 1], state.ub[-state.nv :]])
+
+    activation_xbounds = crocoddyl.ActivationModelQuadraticBarrier(
+        crocoddyl.ActivationBounds(state.lb, state.ub)
+    )
+
+    x_bounds = crocoddyl.CostModelResidual(
+        state,
+        activation_xbounds,
+        crocoddyl.ResidualModelState(state, np.zeros(14), actuation.nu),
+    )
+
     # q0 = kinova.model.referenceConfigurations["arm_up"]
     x0 = np.concatenate([q0, pin.utils.zero(robot_model.nv)])
 
@@ -927,6 +734,10 @@ if mpc_generation:
         runningCostModel.addCost("xReg", xRegCost, 1e1)
         runningCostModel.addCost("uReg", uRegCost, 1e-1)
         runningCostModel.addCost("xdotdotReg", accCost, 1e-1)
+        runningCostModel.addCost("xBounds", x_bounds, 1e5)
+
+        # This works!!
+        # runningModels[0].differential.costs.costs["uReg"].cost.calc(problem.runningDatas[0].differential.costs.costs["uReg"] , np.zeros(14),np.zeros(14))
 
         if i > 50:
             p = full_path[i - 50]
@@ -1020,10 +831,87 @@ if mpc_generation:
         ],
     )
 
+
+    # NOTE: this works
+    # (Pdb) terminalModel.differential.costs.costs["gripperPose"].weight
+    # 1000.0
+
+# problem.runningDatas[0].differential.costs.costs.todict()["uReg"]
+
+    _names = [
+        list(data.differential.costs.costs.todict().keys())
+        for data in problem.runningDatas
+    ]
+
+    names = []
+    for i in _names:
+        for j in i:
+            names.append(j)
+    names = list(set(names))
+
+    dname_vals = {}
+
+    for i, name in enumerate(names):
+        _data = []
+        for j, data in enumerate(problem.runningDatas):
+            if name in data.differential.costs.costs:
+                _data.append(
+                    {"cost": data.differential.costs.costs[name].cost, "time": j}
+                )
+        dname_vals[name] = _data
+
+    print(dname_vals)
+
+    fig, ax = plt.subplots()
+
+    for k, v in dname_vals.items():
+        times = [d["time"] for d in v]
+        cost = [d["cost"] for d in v]
+        ax.plot(times, cost, label=k)
+    ax.legend()
+    plt.show()
+
+    # problem.runningDatas[0].differential.costs.costs:
+
+    # for k,v in problem.runningDatas[0].differential.costs.costs:
+
     # Plotting the solution and the solver convergence
     if WITHPLOT:
         log = solver.getCallbacks()[1]
-        crocoddyl.plotOCSolution(log.xs, log.us, figIndex=1, show=False)
+        # crocoddyl.plotOCSolution(log.xs, log.us, figIndex=1, show=False)
+
+        fig, axs = plt.subplots(3, 1, sharex=True)
+
+        # plot  joints
+
+        ax = axs[0]
+        print("len log.xs", len(log.xs))
+        Xs = log.xs.tolist()
+        import pdb
+
+        pdb.set_trace()
+        # print()
+
+        Xs = log.xs.tolist()
+        Us = log.us.tolist()
+
+        ax = axs[0]
+        for i in range(7):
+            ax.plot([Xs[j][i] for j in range(len(Xs))], label=f"q {i}")
+        ax.legend()
+
+        ax = axs[1]
+        for i in range(7, 14):
+            ax.plot([Xs[j][i] for j in range(len(Xs))], label=f"qdot {i}")
+        ax.legend()
+
+        ax = axs[2]
+        for u in range(len(Us[0])):
+            ax.plot([Us[i][u] for i in range(len(Us))], label=f"u{u}")
+        ax.legend()
+
+        plt.show()
+
         crocoddyl.plotConvergence(
             log.costs, log.pregs, log.dregs, log.grads, log.stops, log.steps, figIndex=2
         )
