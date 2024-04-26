@@ -47,14 +47,14 @@ setup(
     package_dir={package_name: path.join("python", package_name)},
     packages=[package_name] + [package_name + '.' + pkg for pkg in find_packages(path.join("python", package_name))], 
     package_data={package_name: resources},
-    install_requires=[
-        "setuptools",
-        "mujoco",
-        "pinocchio",
-        "pybullet",
-        "robot_descriptions",
-        "importlib_resources"
-    ],
+    # install_requires=[
+    #     "setuptools",
+    #     "mujoco",
+    #     "pinocchio",
+    #     "pybullet",
+    #     "robot_descriptions",
+    #     "importlib_resources"
+    # ],
     zip_safe=True,
     maintainer="hz",
     maintainer_email="hzhu@nyu.edu",
