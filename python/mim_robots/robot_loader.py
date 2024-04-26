@@ -75,6 +75,44 @@ def load_bullet_wrapper(robot_name, locked_joints = None):
         except:
             print("Robot description not support for pybullet")
 
+def load_mujoco_wrapper(robot_name, locked_joints = None):
+    try:
+        import mujoco
+    except Exception as e: print(e)
+
+    try:
+        if(robot_name == 'iiwa'):
+            from mim_robots.robots.kuka.pinmujoco.iiwaWrapperMj import IiwaRobot
+            return IiwaRobot(MiM_Robots["iiwa"], locked_joints)
+        # elif(robot_name == 'iiwa_ft_sensor_shell'):
+        #     from mim_robots.robots.kuka.pinbullet.iiwaWrapper import IiwaRobot
+        #     return IiwaRobot(MiM_Robots["iiwa_ft_sensor_shell"], locked_joints)
+        # elif(robot_name == 'iiwa_ft_sensor_ball'):
+        #     from mim_robots.robots.kuka.pinbullet.iiwaWrapper import IiwaRobot
+        #     return IiwaRobot(MiM_Robots["iiwa_ft_sensor_ball"], locked_joints)
+        # elif(robot_name == 'iiwa_gripper'):
+        #     from mim_robots.robots.kuka.pinbullet.iiwaWrapper import IiwaRobot
+        #     return IiwaRobot(MiM_Robots["iiwa_gripper"], locked_joints)
+        # elif(robot_name == 'teststand'):
+        #     from mim_robots.robots.teststand.pinbullet.teststand_wrapper import TeststandRobot
+        #     robot = TeststandRobot(MiM_Robots["teststand"])
+        # elif(robot_name == 'solo12'):
+        #     from mim_robots.robots.solo12.pinbullet.solo12wrapper import Solo12Robot
+        #     robot = Solo12Robot(MiM_Robots["solo12"], locked_joints)
+        #     return robot
+        else:
+            assert False
+    except:
+        assert False
+        try:
+            name = robot_name + "_description"
+            return load_robot_description(name)
+        except:
+            print("Robot description not support for pybullet")
+
+
+
+
 def load_pinocchio_wrapper(robot_name: str, locked_joints = None):
     """
     Returns pinocchio wrapper model
