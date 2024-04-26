@@ -27,8 +27,39 @@ import argparse
 import crocoddyl
 import numpy as np
 import example_robot_data
+import copy
 
 from scipy.spatial.transform import Slerp
+
+
+def ray_cube_intersection( p: np.ndarray, v: np.ndarray, lb: np.ndarray, ub: np.ndarray):
+    """
+    Intersection test
+
+    Notes:
+    If the point is inside the box, the intersection is in tmax
+    """
+    tmin = 0.0 
+    tmax = np.inf
+
+    for d in range(2):
+        t1 = (lb[d] - p[d]) / v[d]
+        t2 = (ub[d] - p[d]) / v[d]
+        tmin = min(max(t1, tmin), max(t2, tmin))
+        tmax = max(min(t1, tmax), min(t2, tmax))
+
+    return tmin <= tmax, tmin, tmax
+
+
+
+
+
+
+
+
+
+
+
 
 
 def q_array_to_dict(q):
@@ -40,8 +71,8 @@ def q_dict_to_array(q):
     return np.array([v for _, v in q.items()])
 
 
-
-
+# fix the seed.
+np.random.seed(0)
 
 
 argp = argparse.ArgumentParser()
@@ -76,18 +107,14 @@ for body in bodies:
 
 
 joints = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"]
-# pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706"/>
 
 q0 = {"A1": 0, "A2": 0.5, "A3": 0, "A4": -1.5, "A5": 0, "A6": 1.5, "A7": 0}
-# q0 = { "A1":0, "A2":0, "A3":0, "A4":0, "A5":0, "A6":  0, "A7":0 }
 
 for k, v in q0.items():
     data.joint(k).qpos[0] = v
-    # data.qpos[model.joint_name2id(k)] = v
 
 mujoco.mj_forward(model, data)
 
-# init
 
 position_pusher_tip_mujoco = data.geom("pusher_tip").xpos
 position_pusher_mujoco = data.geom("pusher_stick").xpos
@@ -95,12 +122,6 @@ postion_pusher_tip_goal = data.geom("pusher_tip_goal").xpos
 
 r_pusher_tip_mujoco = data.geom("pusher_tip").xmat.reshape(3, 3)
 r_pusher_tip_goal = data.geom("pusher_tip_goal").xmat.reshape(3, 3)
-
-# viewer = mujoco.viewer.launch_passive(model, data)
-# while viewer.is_running():
-#     viewer.sync()
-#     time.sleep(0.01)
-# viewer.close()
 
 
 pusher_tip = "pusher_tip"
@@ -120,7 +141,7 @@ q_pusher_tip_goal = RR.from_matrix(r_pusher_tip_goal).as_quat()
 
 num_steps = 100
 
-max_sim_time = 10  # in seconds
+max_sim_time = 20  # in seconds
 max_T = max_sim_time
 
 slerp = Slerp([0, max_T], RR.from_quat([q_pusher_tip, q_pusher_tip_goal]))
@@ -165,8 +186,8 @@ fig, axs = plt.subplots(2, 1, sharex=True)
 
 ax = axs[0]
 ax.plot(times, path[:, 0], label="x")
-ax.plot(times, path[:, 1], label="x")
-ax.plot(times, path[:, 2], label="x")
+ax.plot(times, path[:, 1], label="y")
+ax.plot(times, path[:, 2], label="z")
 
 ax = axs[1]
 ax.plot(times, desired_vel[:, 0], label="vx")
@@ -266,8 +287,11 @@ assert np.linalg.norm(r_pusher_tip_goal - oMtool_goal.rotation) < 1e-4
 # y should go from -.4 to .4
 
 
-lb = np.array([0.38, -0.35])
-ub = np.array([0.72, +0.35])
+lb = np.array([0.4, -0.30])
+ub = np.array([0.75, +0.30])
+
+
+center = (lb + ub) / 2.0
 
 
 # generate a path
@@ -654,7 +678,6 @@ for p in full_path:
     init_guess_q = _q
     viz.display(_q)
     qs.append(_q)
-
 dt = full_time[1] - full_time[0]
 qs_vel = np.diff(qs, axis=0) / dt
 
@@ -831,12 +854,11 @@ if mpc_generation:
         ],
     )
 
-
     # NOTE: this works
     # (Pdb) terminalModel.differential.costs.costs["gripperPose"].weight
     # 1000.0
 
-# problem.runningDatas[0].differential.costs.costs.todict()["uReg"]
+    # problem.runningDatas[0].differential.costs.costs.todict()["uReg"]
 
     _names = [
         list(data.differential.costs.costs.todict().keys())
@@ -1017,22 +1039,21 @@ if analyse_ik:
         input("Press Enter to continue...")
 
 
-tau_gravity = pin.rnea(
-    robot.model, robot.data, q, np.zeros(robot.nv), np.zeros(robot.nv)
-)
-print("tau_gravity", tau_gravity)
+# tau_gravity = pin.rnea(
+#     robot.model, robot.data, q, np.zeros(robot.nv), np.zeros(robot.nv)
+# )
+# print("tau_gravity", tau_gravity)
 
-viewer = mujoco.viewer.launch_passive(model, data)
-data.ctrl = tau_gravity
+# data.ctrl = tau_gravity
 
 
-def get_robot_joints():
+def get_robot_joints(data):
     """ """
     joints = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"]
     return np.array([data.joint(j).qpos[0] for j in joints])
 
 
-def get_robot_vel():
+def get_robot_vel(data):
     """ """
     joints = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"]
     return np.array([data.joint(j).qvel[0] for j in joints])
@@ -1046,8 +1067,8 @@ class PositionController:
         self.q_desired = q0array
 
     def get_u(self):
-        q = get_robot_joints()
-        qvel = get_robot_vel()
+        q = get_robot_joints(data)
+        qvel = get_robot_vel(data)
         out = self.kp * (self.q_desired - q) - self.kv * qvel
         if self.gravity_compenstation:
             out += pin.rnea(
@@ -1058,7 +1079,7 @@ class PositionController:
 
 class Trajectory_controller_q:
 
-    def __init__(self, path, times, path_vel=None):
+    def __init__(self, path=None, times=None, path_vel=None):
         """ """
         self.path = path
         self.path_vel = path_vel
@@ -1066,7 +1087,8 @@ class Trajectory_controller_q:
         self.kp = 20.0
         self.kv = 10.0
 
-        assert len(self.path) == len(self.path_time)
+        if self.path is not None and self.path_time is not None:
+            assert len(self.path) == len(self.path_time)
 
     def get_u(self):
         """ """
@@ -1080,8 +1102,8 @@ class Trajectory_controller_q:
 
         # Compute the error term in the end effector position
 
-        q = get_robot_joints()
-        qvel = get_robot_vel()
+        q = get_robot_joints(data)
+        qvel = get_robot_vel(data)
 
         if self.path_vel is None:
             aq = self.kp * (pdes - q) - self.kv * qvel
@@ -1093,6 +1115,9 @@ class Trajectory_controller_q:
             aq = self.kp * (pdes - q) + self.kv * (vel_des - qvel)
 
         return pin.rnea(robot.model, robot.data, q, qvel, aq)
+
+    def policy(self):
+        return self.get_u()
 
 
 class Trajectory_controller:
@@ -1127,8 +1152,8 @@ class Trajectory_controller:
 
         # Compute the error term in the end effector position
 
-        q = get_robot_joints()
-        qvel = get_robot_vel()
+        q = get_robot_joints(data)
+        qvel = get_robot_vel(data)
 
         only_position = False
 
@@ -1181,27 +1206,39 @@ ffs = []
 
 class Goal_controller_q:
 
-    def __init__(self, qdes):
+    def __init__(self, pin_model):
+        """
+        """
         self.qvl = 1.0
         self.kvv = 1.0
-        self.qdes = qdes
+        self.qgoal = None
+        self.qvgoal = None
 
-    def get_u(self):
-        """ """
+        self.ff_kp = 0.0
+        self.ff_kv = 0.0
+        self.pin_model = pin_model
 
-        q = get_robot_joints()
-        qvel = get_robot_vel()
+    def get_u(self,q,qv):
+        """ 
+        """
 
-        aq = self.kvv * (self.qdes - q) - self.qvl * qvel
+        assert self.qgoal is not None
+
+        if self.qvgoal is not None:
+            aq = self.kvv * (self.qgoal - q) - self.qvl * (qv - self.qvgoal)
+        else:
+            aq = self.kvv * (self.qgoal - q) - self.qvl * qv
         aqs.append(np.copy(aq))
         aqs_time.append(data.time)
-        ff = pin.rnea(robot.model, robot.data, q, qvel, aq)
-        return ff
+        ff = pin.rnea(self.pin_model.model, self.pin_model.data, q, qv, aq)
+        return ff + self.ff_kp * (self.qgoal - q) + self.ff_kv * (self.qvgoal - qv)
+
 
 
 class Goal_controller:
 
     def __init__(self):
+        self.ee_goal = None
         self.idx = 0
         self.k_invdyn = 1.0
         self.qvl = 1.0
@@ -1209,8 +1246,8 @@ class Goal_controller:
 
     def get_u(self):
 
-        q = get_robot_joints()
-        qvel = get_robot_vel()
+        q = get_robot_joints(data)
+        qvel = get_robot_vel(data)
 
         only_position = False
         if only_position:
@@ -1219,7 +1256,7 @@ class Goal_controller:
 
             # Placement from world frame o to frame f oMtool
             oMtool = robot.data.oMf[IDX_PUSHER_TIP]
-            oMgoal = robot.data.oMf[IDX_PUSHER_TIP_GOAL]
+            # oMgoal = robot.data.oMf[IDX_PUSHER_TIP_GOAL]
 
             # 3D jacobian in world frame
             o_Jtool3 = pin.computeFrameJacobian(
@@ -1227,7 +1264,7 @@ class Goal_controller:
             )[:3, :]
 
             # vector from tool to goal, in world frame
-            o_TG = oMtool.translation - oMgoal.translation
+            o_TG = oMtool.translation - self.ee_goal
 
             v_des = -self.k_invdyn * np.linalg.pinv(o_Jtool3) @ o_TG
         else:
@@ -1239,10 +1276,10 @@ class Goal_controller:
             # Placement from world frame o to frame f oMtool
 
             oMtool = robot.data.oMf[IDX_PUSHER_TIP]
-            oMgoal = robot.data.oMf[IDX_PUSHER_TIP_GOAL]
+            # oMgoal = robot.data.oMf[IDX_PUSHER_TIP_GOAL]
 
             # 6D error between the two frame
-            tool_nu = pin.log(oMtool.inverse() * oMgoal).vector
+            tool_nu = pin.log(oMtool.inverse() * self.ee_goal).vector
 
             # Get corresponding jacobian
             tool_Jtool = pin.computeFrameJacobian(
@@ -1251,9 +1288,16 @@ class Goal_controller:
 
             # Control law by least square
             v_des = np.linalg.pinv(tool_Jtool) @ tool_nu
+            # TODO: should i Regualarize a little bit? Just to be sure it does not explode!
 
+        print("v_des", v_des)
+        print("qvel", qvel)
         aq = self.kvv * (v_des - qvel) - self.qvl * qvel
+        print("acc", aq)
         return pin.rnea(robot.model, robot.data, q, qvel, aq)
+
+    def policy(self):
+        return self.get_u()
 
 
 # c = PositionController()
@@ -1282,6 +1326,8 @@ limit_rate = True
 last_sim_time = data.time
 last_real_time = time.time()
 last_viewer_sync = time.time()
+
+viewer = mujoco.viewer.launch_passive(model, data)
 scene = viewer._user_scn
 
 # add
@@ -1305,15 +1351,454 @@ all_q = []
 all_times = []
 
 max_sim_time = times_for_controller[-1]
+
+
+class Position_Planner:
+    """ """
+
+    def __init__(self, pin_robot, add_capsules):
+        """
+        Notes:
+        The low level force control will generate the torque commands
+        """
+        # q = get_robot_joints(data)
+        
+        self.pin_robot = pin_robot
+        self.start = self.pin_robot.data.oMf[IDX_PUSHER_TIP]
+        pin.framesForwardKinematics(self.pin_robot.model, self.pin_robot.data, q)
+
+        self.low_level_force_control = Goal_controller_q(pin_robot)
+        self.low_level_force_control.qvl = 5.0
+        self.low_level_force_control.kvv = 10.0
+        self.low_level_force_control.ff_kp = 0.1
+        self.low_level_force_control.ff_kv = 0.1
+        self.low_level_force_control.qvgoal = np.zeros(7)
+        self.low_level_force_control.qgoal = q
+
+        self.mode = "initialized"
+
+        self.center = np.zeros(3)
+        self.center[:2] = center
+        self.center[2] = desired_z
+
+        self.plan = []  # sequence of positions and velocities
+        self.reference_max_vel = 0.1
+
+        self.p_lb = np.array([lb[0], lb[1], 0.05])
+        self.p_ub = np.array([ub[0], ub[1], 0.05])
+
+        self.z_safe = .15
+        self.p_lb_safe = np.array([lb[0], lb[1], 0.05])
+        self.p_ub_safe = np.array([ub[0], ub[1], self.z_safe])
+
+        self.goal = pin.SE3().Identity()
+        self.default_rotation = oMtool_goal.rotation
+        self.goal.translation[:2] = center
+        self.goal.translation[2] = desired_z
+        self.goal.rotation = self.default_rotation
+
+        self.scene = None  # used to add visual capsules
+
+        self.p_lb_small = self.p_lb + 0.2 * (self.p_ub - self.p_lb)
+        self.p_ub_small = self.p_ub - 0.2 * (self.p_ub - self.p_lb)
+
+        self.add_capsules = add_capsules
+        self.counter = 0
+        self.dist_fail_controller = 0.2  # in cartesian space
+
+        self.sensor_object_position = np.zeros(3)
+        self.sensor_object_rotation = np.eye(3)
+        self.q = np.zeros(7)
+        self.qv = np.zeros(7)
+
+        self.last_hl_time = -1
+        self.hl_time = 0.1 # Time step of high level planner (check if plan is going well, recompute if necessary)
+
+    def get_data(self):
+        return {
+            "ee_goal": self.plan[self.counter if self.counter < len(self.plan) else -1],
+            "qgoal": self.low_level_force_control.qgoal,
+            "qvgoal": self.low_level_force_control.qvgoal,
+        }
+
+    def read_sensors(self,data):
+        """
+
+        """
+        self.sensor_object_position = np.copy(data.body("cube_small").xpos)
+        self.sensor_object_rotation = np.copy(data.body("cube_small").xmat)
+
+
+    def read_robot_info(self,data):
+        """
+
+        """
+        self.q = np.copy(get_robot_joints(data))
+        self.qv = np.copy(get_robot_vel(data))
+
+    def policy(self, sim_time):
+        """ """
+
+        if sim_time - self.last_hl_time > self.hl_time:
+            cube = np.copy(self.sensor_object_position)
+            is_outside = np.any(cube[:2] < self.p_lb_small[:2]) or np.any(
+                cube[:2] > self.p_ub_small[:2]
+            )
+            recompute_plan = False
+
+
+            if self.mode == "initialized": 
+                recompute_plan  = True
+
+            if len(self.plan) >  0:
+                pass
+                # recompute_plan = True
+                # xdes = self.plan[self.counter if self.counter < len(self.plan) else -1]
+                #
+                # is_high_tracking_error = ( np.linalg.norm(cube - xdes.translation) 
+                #     > self.dist_fail_controller)
+                #
+                # if is_high_tracking_error:
+                #     recompute_plan = True
+
+            if is_outside and not self.mode == "recovery":
+                recompute_plan = True
+            
+            if self.counter >= len(self.plan):
+                recompute_plan = True
+
+
+            if recompute_plan:
+
+                old_mode = copy.deepcopy(self.mode)
+                rgba = None
+                self.plan = []
+                self.counter = 0
+
+                pin.framesForwardKinematics(self.pin_robot.model, self.pin_robot.data, self.q)
+                pusher = self.pin_robot.data.oMf[IDX_PUSHER_TIP]
+
+
+
+                # what to do if the tracking error is high?
+
+
+                if is_outside:
+                    self.mode = "recovery"
+                    rel_cube = cube - self.center
+
+                    print("cube is outside!")
+                    print("entering recovery mode")
+
+                    # I will generate 3 goal
+
+
+                    # move UP
+
+                    # lets compute the pusher position using pinocchio
+
+                    goal_0 = pusher.translation
+                    goal_0[2] = self.z_safe
+
+                    # Intersect the line rel_cube with the bounds (in 2D)
+                    p = self.center[:2]
+                    v = rel_cube[:2]
+
+                    intersect, tmin, tmax = ray_cube_intersection( p, v, lb, ub)
+
+                    assert intersect == True
+                    assert tmin < tmax
+                    assert tmin == 0
+                    intersection_point = p + tmax * v
+
+                    goal_1 = np.array([ intersection_point[0], intersection_point[1], self.z_safe ])
+
+                    goal_2 = np.array([ intersection_point[0], intersection_point[1], desired_z ])
+
+                    goal_3 = self.center + .2 * rel_cube 
+
+
+
+
+
+
+
+                    # goal_0 = self.center
+                    #
+                    # goal_1 = np.zeros(3)
+                    #
+                    # goal_1[0] = rel_cube[1]
+                    # goal_1[1] = rel_cube[0]
+                    #
+                    # # a = 2 * np.pi / 3  # lets do "a" degrees
+                    # a =  np.pi / 5  # lets do "a" degrees
+                    # R = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+                    # goal_1[:2] = self.center[:2] +  R @ goal_1[:2]
+                    # goal_1[2] = desired_z
+                    #
+                    # goal_2 = self.center +  1.5 * rel_cube
+                    # goal_3 = self.center
+
+                    # take an orthogonal_direction:
+                    # _big_goals = [goal_1, goal_2, goal_3]
+                    _big_goals = [goal_0, goal_1, goal_2, goal_3]
+
+
+
+
+
+                    # make sure they are in the cube
+
+                    _big_goals = [ np.clip(g, self.p_lb_safe, self.p_ub_safe) for g in _big_goals]
+
+                    big_goals = [ pin.SE3(self.default_rotation, g) for g in _big_goals ]
+
+
+                    if self.add_capsules:
+                        for g in big_goals:
+                            add_visual_capsule(
+                                scene,
+                                g.translation,
+                                g.translation + np.array([0, 0, 0.1]),
+                                0.05,
+                                np.array([1, 1, 0, 0.1]),
+                            )
+
+                    for i in range(len(big_goals)):
+
+                        if i == 0:
+                            # TODO: decide if I should use current orientation!
+                            start = pin.SE3(self.default_rotation, pusher.translation)
+                        else:
+                            start = big_goals[i - 1]
+                        total_time = (
+                            np.linalg.norm(big_goals[i].translation - start.translation) 
+                            / self.reference_max_vel
+                        )
+                        times = np.linspace(0, total_time, int(total_time / self.hl_time))
+
+                        # this does not get the last one!
+                        
+                        print(f"i is {i}")
+                        for time in times:
+                            new_state = pin.SE3.Interpolate(
+                                start, big_goals[i],  time / total_time
+                            )
+
+                            print(f"adding new states {new_state}")
+                            self.plan.append(new_state)
+
+
+                        self.mode = "recovery"
+                        print("new high level mode", self.mode)
+                        print("len(self.plan)", len(self.plan))
+
+                        rgba = np.array([1, 1, 0, 0.1])
+                        # if self.add_capsules:
+                        #     # if len(self.plan) > 1000:
+                        #     # TODO: comment this out!!
+                        #     for i in range(0, len(self.plan), 1):
+                        #         add_visual_capsule(
+                        #             scene,
+                        #             self.plan[i].translation,
+                        #             self.plan[i].translation + np.array([0, 0, 0.1]),
+                        #             0.05,
+                        #             rgba
+                        #         )
+
+                # elif old_mode == "initialized":
+                #     self.mode = "to_rand"
+                #     self.start = pin.SE3(
+                #         data.geom("pusher_tip").xmat.reshape(3, 3),
+                #         data.geom("pusher_tip").xpos,
+                #     )
+                #
+                #     # random goal
+                #     rand_goal = self.center
+                #     # self.p_lb_small + np.random.rand(3) * (
+                #     #     self.p_ub_small - self.p_lb_small
+                #     # )
+                #     self.goal = pin.SE3(self.default_rotation, rand_goal)
+                #     rgba = np.array([0, 0, 1, 0.1])
+                #
+                #     total_time = (
+                #         np.linalg.norm(self.goal.translation - self.start.translation)
+                #         / self.reference_max_vel
+                #     )
+                #     self.times = np.linspace(0, total_time, int(total_time / self.hl_time))
+                #
+                #     for time in self.times:
+                #         new_state = pin.SE3.Interpolate(
+                #             self.start, self.goal, time / total_time
+                #         )
+                #         self.plan.append(new_state)
+
+                elif old_mode == "to_obj" or old_mode == "initialized" or old_mode == "recovery":
+                    self.mode = "to_rand"
+                    self.start = pin.SE3(
+                        pusher.rotation,
+                        pusher.translation
+                    )
+
+                    # random goal
+                    rand_goal = self.p_lb_small + np.random.rand(3) * (
+                        self.p_ub_small - self.p_lb_small
+                    )
+                    print("rand goal is", rand_goal)
+
+                    if old_mode  == "initialized":
+                        rand_goal =  self.center
+
+                    self.goal = pin.SE3(self.default_rotation, rand_goal)
+                    rgba = np.array([0, 0, 1, 0.1])
+
+                    total_time = (
+                        np.linalg.norm(self.goal.translation - self.start.translation)
+                        / self.reference_max_vel
+                    )
+                    self.times = np.linspace(0, total_time, int(total_time / self.hl_time))
+
+                    for time in self.times:
+                        new_state = pin.SE3.Interpolate(
+                            self.start, self.goal, time / total_time
+                        )
+                        self.plan.append(new_state)
+
+
+
+                elif old_mode == "to_rand":
+                    self.mode = "to_obj"
+                    diff_weights = np.array([1, 1, 0])
+                    # self.penetration = 0.2
+                    self.penetration = 0.4
+                    cube_to_ball = diff_weights * np.array(cube - pusher.translation)
+                    translation = (
+                        cube
+                        + self.penetration * cube_to_ball / np.linalg.norm(cube_to_ball)
+                    )
+
+                    translation = np.clip(translation, self.p_lb, self.p_ub)
+                    goal = pin.SE3(self.default_rotation, translation)
+
+                    start = pin.SE3(self.default_rotation, pusher.translation)
+
+                    rgba = np.array([1, 0, 0, 0.1])
+
+                    total_time = (
+                        np.linalg.norm(goal.translation - start.translation)
+                        / self.reference_max_vel
+                    )
+                    self.times = np.linspace(0, total_time, int(total_time / self.hl_time))
+
+                    for time in self.times:
+                        new_state = pin.SE3.Interpolate(
+                            start, goal, time / total_time
+                        )
+                        self.plan.append(new_state)
+
+
+                # Should I follow the current plan, or change mode
+
+
+
+
+                    # if self.add_capsules:
+                    #     add_visual_capsule(
+                    #         self.scene,
+                    #         self.goal.translation,
+                    #         self.goal.translation + np.array([0, 0, 0.1]),
+                    #         0.05,
+                    #         np.array([1, 0, 0, 0.1]),
+                    #     )
+
+
+                for i, s in enumerate(self.plan):
+                    print(f"state {i} is {s}")
+
+                if self.add_capsules:
+                    point1 = self.plan[-1]
+                    # self.goal.translation
+                    point2 = copy.deepcopy(point1)
+                    point2.translation[2] += 0.01
+
+                    radius = 0.05
+                    print("adding capsule!!")
+
+                    add_visual_capsule(scene, point1.translation, point2.translation, radius, rgba)
+
+                    # for i in range(0, len(self.plan), 2):
+                    #     point1 = self.plan[i].translation
+                    #     point2 = copy.deepcopy(point1)
+                    #     point2[2] += 0.01
+                    #     radius = 0.05
+                    #     rgba = np.array([0, 0, 1, 0.1])
+                    #     add_visual_capsule(scene, point1, point2, radius, rgba)
+
+                qs = []
+                init_guess_q = q0array
+                for p in self.plan:
+                    # sov
+                    # _p = np.copy(postion_pusher_tip_goal)
+                    # _p[:2] = np.copy(p[:2])
+                    # frame_goal = pin.SE3(r_pusher_tip_goal, _p)
+                    _q, cost = solve_ik(self.pin_robot, p, IDX_PUSHER_TIP, init_guess_q)
+                    init_guess_q = _q
+                    viz.display(_q)
+                    qs.append(_q)
+                self.qs = qs
+
+                dt = self.hl_time  # in seconds
+                self.qs_vel = np.diff(qs, axis=0) / dt
+                self.counter = 0
+
+            self.low_level_force_control.qgoal = self.qs[self.counter]
+            self.low_level_force_control.qvgoal = self.qs_vel[
+                self.counter if self.counter < len(self.qs_vel) else -1
+            ]
+            self.counter += 1
+            self.last_hl_time = sim_time
+
+        return self.low_level_force_control.get_u(self.q, self.qv)
+
+        # lets create another plan!
+
+
+planner = Position_Planner(pin_robot=robot, add_capsules=True)
+
+exp_datas = []
+# with mujoco.viewer.launch_passive(model, data) as viewer:
+max_sim_time = 20
 while data.time < max_sim_time + extra_time:
-    data.ctrl = c.get_u()
+    exp_data = {}
+
+    planner.read_sensors(data)
+    planner.read_robot_info(data)
+
+    sim_time = data.time
+    u = planner.policy(sim_time)
+
+    exp_data.update(planner.get_data())
+    exp_data.update(
+        {
+            "pos": np.copy(data.geom("pusher_tip").xpos),
+            "q": get_robot_joints(data),
+            "qvel": get_robot_vel(data),
+            "time": data.time,
+        }
+    )
+    exp_datas.append(exp_data)
+
+    # planner.get_data()
+
+    print("u", u)
+    data.ctrl = u
     mujoco.mj_step(model, data)
     tic = time.time()
     if limit_rate:
         compute_time = tic - last_real_time
         sim_time = data.time - last_sim_time
         if compute_time < sim_time:
-            print("sleeping", sim_time - compute_time)
+            # print("sleeping", sim_time - compute_time)
             time.sleep(sim_time - compute_time)
     if tic - last_viewer_sync > 1.0 / 24.0:
         # update the position of the goal
@@ -1331,12 +1816,46 @@ while data.time < max_sim_time + extra_time:
 
     # get the position of the puser tip
     pos = np.copy(data.geom("pusher_tip").xpos)
-    all_q.append(np.copy(get_robot_joints()))
+    all_q.append(np.copy(get_robot_joints(data)))
     all_pos.append(pos)
     all_times.append(data.time)
 
     last_sim_time = data.time
     last_real_time = time.time()
+
+viewer.close()
+
+fig, axs = plt.subplots(2, 1)
+# ax.plot( [ d["pos"][0] for d in exp_datas] , label="x")
+# ax.plot( [ d["pos"][1] for d in exp_datas] , label="y")
+
+ax = axs[0]
+times = [d["time"] for d in exp_datas]
+for i in range(7):
+    ax.plot(times, [d["q"][i] for d in exp_datas], label=f"joint {i}")
+    ax.plot(
+        times,
+        [d["qgoal"][i] for d in exp_datas],
+        label=f"joint {i} goal",
+        linestyle="--",
+    )
+
+ax = axs[1]
+ax.plot(times, [d["pos"][0] for d in exp_datas], label="x")
+ax.plot(times, [d["pos"][1] for d in exp_datas], label="y")
+ax.plot(times, [d["ee_goal"].translation[0] for d in exp_datas], label="x goal")
+ax.plot(times, [d["ee_goal"].translation[1] for d in exp_datas], label="y goal")
+
+plt.show()
+
+
+fig, ax = plt.subplots()
+ax.plot([d["pos"][0] for d in exp_datas], label="x")
+ax.plot([d["pos"][1] for d in exp_datas], label="y")
+ax.plot([d["ee_goal"].translation[0] for d in exp_datas], label="x goal")
+ax.plot([d["ee_goal"].translation[1] for d in exp_datas], label="y goal")
+ax.legend()
+plt.show()
 
 fig, axs = plt.subplots(3, 1, sharex=True)
 ax = axs[0]
@@ -1391,4 +1910,3 @@ print("sim done, closing viewer")
 # mujoco.mj_step(model, data)
 # viewer.sync()
 # time.sleep(0.01)
-viewer.close()
