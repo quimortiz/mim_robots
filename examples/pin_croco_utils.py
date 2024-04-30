@@ -94,3 +94,52 @@ def view_image(image):
             break
     cv2.destroyWindow("tmp")
 
+
+
+class Goal_controller_q:
+
+    def __init__(self, SIM: bool, pin_model):
+        """
+        """
+        self.SIM = SIM
+        self.qvl = 1.0
+        self.kvv = 1.0
+        self.qgoal = None
+        self.qvgoal = None
+
+        self.ff_kp = 0.0
+        self.ff_kv = 0.0
+        self.pin_model = pin_model
+
+    def get_u(self,q,qv):
+        """ 
+        """
+
+        assert self.qgoal is not None
+
+        if self.qvgoal is not None:
+            aq = self.kvv * (self.qgoal - q) - self.qvl * (qv - self.qvgoal)
+        else:
+            aq = self.kvv * (self.qgoal - q) - self.qvl * qv
+
+        print("aq", aq)
+        print("q", q)
+        print("qv", qv)
+
+        ff = pin.rnea(self.pin_model.model, self.pin_model.data, q, qv, aq)
+        out =  ff + self.ff_kp * (self.qgoal - q) + self.ff_kv * (self.qvgoal - qv)
+        print("self.qgoal - q", self.qgoal - q) 
+        print("self.qvgoal - qv", self.qvgoal - qv)
+
+
+
+        if not self.SIM:
+            out -=  pin.computeGeneralizedGravity(self.pin_model.model, self.pin_model.data, q)
+        return out
+
+
+
+            # remove the gravity!
+
+
+
