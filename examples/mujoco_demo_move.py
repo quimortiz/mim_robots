@@ -10,7 +10,7 @@ from pinocchio.visualize import MeshcatVisualizer
 import pinocchio as pin
 import sys
 import numpy as np
-import cv2
+# import cv2
 import pathlib
 from scipy.spatial.transform import Rotation as RR
 import yaml
@@ -32,23 +32,6 @@ import copy
 from scipy.spatial.transform import Slerp
 
 
-def ray_cube_intersection( p: np.ndarray, v: np.ndarray, lb: np.ndarray, ub: np.ndarray):
-    """
-    Intersection test
-
-    Notes:
-    If the point is inside the box, the intersection is in tmax
-    """
-    tmin = 0.0 
-    tmax = np.inf
-
-    for d in range(2):
-        t1 = (lb[d] - p[d]) / v[d]
-        t2 = (ub[d] - p[d]) / v[d]
-        tmin = min(max(t1, tmin), max(t2, tmin))
-        tmax = max(min(t1, tmax), min(t2, tmax))
-
-    return tmin <= tmax, tmin, tmax
 
 
 
@@ -173,6 +156,7 @@ for ii in range(0, len(rotation_path), one_every):
 
 plt.show()
 
+# sys.exit()
 
 displacement = np.diff(path, axis=0)
 displacement = np.vstack([displacement, displacement[-1, :]])
@@ -268,6 +252,7 @@ oMtooltip = robot.data.oMf[IDX_PUSHER_TIP]
 oMtool_goal = robot.data.oMf[IDX_PUSHER_TIP_GOAL]
 
 print("Tool tip placement:", oMtooltip)
+print("oMtool_goal", oMtool_goal)
 
 assert np.linalg.norm(position_pusher_tip_mujoco - oMtooltip.translation) < 1e-4
 assert np.linalg.norm(position_pusher_mujoco - oMtool.translation) < 1e-4
@@ -1204,34 +1189,6 @@ aqs_time = []
 ffs = []
 
 
-class Goal_controller_q:
-
-    def __init__(self, pin_model):
-        """
-        """
-        self.qvl = 1.0
-        self.kvv = 1.0
-        self.qgoal = None
-        self.qvgoal = None
-
-        self.ff_kp = 0.0
-        self.ff_kv = 0.0
-        self.pin_model = pin_model
-
-    def get_u(self,q,qv):
-        """ 
-        """
-
-        assert self.qgoal is not None
-
-        if self.qvgoal is not None:
-            aq = self.kvv * (self.qgoal - q) - self.qvl * (qv - self.qvgoal)
-        else:
-            aq = self.kvv * (self.qgoal - q) - self.qvl * qv
-        aqs.append(np.copy(aq))
-        aqs_time.append(data.time)
-        ff = pin.rnea(self.pin_model.model, self.pin_model.data, q, qv, aq)
-        return ff + self.ff_kp * (self.qgoal - q) + self.ff_kv * (self.qvgoal - qv)
 
 
 
@@ -1327,6 +1284,8 @@ last_sim_time = data.time
 last_real_time = time.time()
 last_viewer_sync = time.time()
 
+# sys.exit()
+
 viewer = mujoco.viewer.launch_passive(model, data)
 scene = viewer._user_scn
 
@@ -1356,18 +1315,22 @@ max_sim_time = times_for_controller[-1]
 class Position_Planner:
     """ """
 
-    def __init__(self, pin_robot, add_capsules):
+    def __init__(self, pin_robot, 
+                 only_random = False,
+                 add_capsules = False):
         """
         Notes:
         The low level force control will generate the torque commands
         """
         # q = get_robot_joints(data)
         
+        self.only_random = only_random
+
         self.pin_robot = pin_robot
         self.start = self.pin_robot.data.oMf[IDX_PUSHER_TIP]
         pin.framesForwardKinematics(self.pin_robot.model, self.pin_robot.data, q)
 
-        self.low_level_force_control = Goal_controller_q(pin_robot)
+        self.low_level_force_control = Goal_controller_q(SIM=True,pin_model=pin_robot)
         self.low_level_force_control.qvl = 5.0
         self.low_level_force_control.kvv = 10.0
         self.low_level_force_control.ff_kp = 0.1
@@ -1633,7 +1596,7 @@ class Position_Planner:
                 #         )
                 #         self.plan.append(new_state)
 
-                elif old_mode == "to_obj" or old_mode == "initialized" or old_mode == "recovery":
+                elif self.only_random or old_mode == "to_obj" or old_mode == "initialized" or old_mode == "recovery":
                     self.mode = "to_rand"
                     self.start = pin.SE3(
                         pusher.rotation,

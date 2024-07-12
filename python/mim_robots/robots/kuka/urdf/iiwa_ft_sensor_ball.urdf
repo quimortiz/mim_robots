@@ -4,7 +4,6 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="KUKAiiwa14" xmlns:xacro="http://www.ros.org/wiki/xacro">
-  adfafa
   <mujoco>
     <compiler 
     meshdir="../meshes/kuka" 
@@ -344,17 +343,6 @@
         <color rgba="0.8 0.8 0.8 1.0"/>
       </material>
     </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 .05"/>
-      <geometry>
-        <cylinder radius="0.02" length="0.1"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
-
-
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -364,18 +352,6 @@
         <color rgba="0.8 0.8 0.8 1.0"/>
       </material>
     </collision>
-
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 .05"/>
-      <geometry>
-        <cylinder radius="0.02" length="0.1"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.8 0.8 0.8 1.0"/>
-      </material>
-    </visual>
-
-
   </link>
   <!-- fixed joint sensor_mount <=> sensor -->
   <joint name="mount_to_sensor_joint" type="fixed">
@@ -514,7 +490,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.00873"/>
       <geometry>
-        <spher radius="0.00873"/>
+        <sphere radius="0.00873"/>
         <!-- <mesh filename="package://meshes/kuka/tennis_ball_smaller.obj" /> -->
       </geometry>
       <material name="Green">

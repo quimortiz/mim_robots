@@ -24,12 +24,6 @@ import copy
 import argparse
 
 
-def view_image(image):
-    cv2.imshow(f"tmp", image)
-    while True:
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-    cv2.destroyWindow("tmp")
 
 
 
@@ -558,7 +552,7 @@ if args.record_movement:
         # ax.set_aspect('equal', 'box')
         plt.show()
 
-sys.exit()
+# sys.exit()
 
       # <body name='cube' pos='-0.4 0.2 0.2'>
 

@@ -1,6 +1,15 @@
 import cv2
 import numpy as np
 
+
+def view_image(image):
+    cv2.imshow(f"tmp", image)
+    while True:
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+    cv2.destroyWindow("tmp")
+
+
 ARUCO_DICT = {
 	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
 	"DICT_4X4_100": cv2.aruco.DICT_4X4_100,

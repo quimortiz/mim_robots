@@ -5,6 +5,26 @@ import cv2
 import mujoco
 
 
+def ray_cube_intersection( p: np.ndarray, v: np.ndarray, lb: np.ndarray, ub: np.ndarray):
+    """
+    Intersection test
+
+    Notes:
+    If the point is inside the box, the intersection is in tmax
+    """
+    tmin = 0.0 
+    tmax = np.inf
+
+    for d in range(2):
+        t1 = (lb[d] - p[d]) / v[d]
+        t2 = (ub[d] - p[d]) / v[d]
+        tmin = min(max(t1, tmin), max(t2, tmin))
+        tmax = max(min(t1, tmax), min(t2, tmax))
+
+    return tmin <= tmax, tmin, tmax
+
+
+
 def solve_ik(robot, oMgoal: pin.SE3, idx_ee: int, q0: np.ndarray):
     """ """
     num_iterations = 10

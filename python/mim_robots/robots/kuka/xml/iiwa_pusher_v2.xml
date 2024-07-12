@@ -160,19 +160,19 @@
     <!--   <geom pos='0 0 0.0' size=".02" type="sphere" rgba="1 0 0 1"/> -->
     <!-- </body> -->
     <!-- Robot -->
-    <body name="cage" pos="0.55 0. 0.">
+    <body name="cage" pos="0.55 0.0 0.0">
       <geom name="cage-g1" size="0.4 0.02 .015" pos=".0 -0.4 0.015" type="box" rgba="0.6 0.6 0.6 1"/>
       <geom name="cage-g2" size=".4 .02 .015" type="box" pos="+.0 0.4 0.015" rgba="0.6 0.6 0.6 1"/>
-      <geom name="cage-g3" size="0.02 0.36 .015" pos="-.15 -0.0 0.015" type="box" rgba="0.6 0.6 0.6 1"/>
+      <geom name="cage-g3" size="0.02 0.36 .015" pos="-.2 -0.0 0.015" type="box" rgba="0.6 0.6 0.6 1"/>
       <geom name="cage-g4" size=".02 .36 .015" type="box" pos="+.2 +.0 0.015" rgba="0.6 0.6 0.6 1"/>
     </body>
 
 
     <body name="limit-ws"> 
-      <geom name="x+y+" size="0.02" pos=".65 0.4 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
-      <geom name="x+y-" size="0.02" pos=".65 -.4 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
-      <geom name="x-y-" size="0.02" pos=".35 -0.4 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
-      <geom name="x-y+" size="0.02" pos=".35 0.4 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
+      <geom name="x+y+" size="0.02" pos=".72 0.3 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
+      <geom name="x+y-" size="0.02" pos=".72 -.3 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
+      <geom name="x-y-" size="0.02" pos=".35 -0.3 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
+      <geom name="x-y+" size="0.02" pos=".35 0.3 0.2"  rgba="0.6 0.6 0.6 1" contype="0" conaffinity="0" />
     </body>
 
 
